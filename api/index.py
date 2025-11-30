@@ -1,9 +1,13 @@
+# Vercel serverless function entry point
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import app
+parent_dir = str(Path(__file__).resolve().parent.parent)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from app import app
 
-# Vercel serverless function handler
-def handler(request):
-    return app(request.environ, lambda s, h: None)
-
-# For local testing
-if __name__ == "__main__":
-    app.run()
+# Export the Flask app for Vercel
+app = app

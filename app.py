@@ -31,9 +31,21 @@ else:
 # Ensure upload directory exists
 Config.UPLOADS_DIR.mkdir(exist_ok=True)
 
-# Initialize coordinator and memory agent
-coordinator = KrishiSahayakCoordinator()
-memory_agent = MemoryAgent()
+# Initialize coordinator and memory agent lazily
+coordinator = None
+memory_agent = None
+
+def get_coordinator():
+    global coordinator
+    if coordinator is None:
+        coordinator = KrishiSahayakCoordinator()
+    return coordinator
+
+def get_memory_agent():
+    global memory_agent
+    if memory_agent is None:
+        memory_agent = MemoryAgent()
+    return memory_agent
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -65,7 +77,7 @@ def register():
         phone = data.get('phone', '')
         
         try:
-            memory_agent.register_user(
+            get_memory_agent().register_user(
                 user_id=user_id,
                 name=name,
                 location=location,
@@ -87,7 +99,7 @@ def login():
         data = request.json
         user_id = data.get('user_id')
         
-        user_info = memory_agent.get_user_info(user_id)
+        user_info = get_memory_agent().get_user_info(user_id)
         if user_info:
             session['user_id'] = user_info['user_id']
             session['name'] = user_info['name']
@@ -133,7 +145,7 @@ def diagnose():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 result = loop.run_until_complete(
-                    coordinator.diagnose_plant(
+                    get_coordinator().diagnose_plant(
                         image_path=filepath,
                         user_id=session['user_id'],
                         location=location,
@@ -159,7 +171,7 @@ def history():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    user_history = memory_agent.get_user_history(session['user_id'])
+    user_history = get_memory_agent().get_user_history(session['user_id'])
     return render_template('history.html', history=user_history, user=session)
 
 @app.route('/followup')
@@ -168,7 +180,7 @@ def followup():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    followups = memory_agent.get_pending_followups(session['user_id'])
+    followups = get_memory_agent().get_pending_followups(session['user_id'])
     return render_template('followup.html', followups=followups, user=session)
 
 @app.route('/about')
@@ -182,7 +194,7 @@ def get_session(session_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    session_data = memory_agent.get_session_details(session_id)
+    session_data = get_memory_agent().get_session_details(session_id)
     if session_data:
         return jsonify(session_data)
     else:

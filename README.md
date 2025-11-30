@@ -26,20 +26,36 @@ Small and medium-scale farmers face critical challenges:
 ## ✨ Features
 
 ### 🤖 Multi-Agent System
-- **Vision Agent**: Analyzes plant images using GPT-4o to detect diseases
+- **Vision Agent**: Analyzes plant images using GPT-4o OR local CNN model
 - **Research Agent**: Fetches treatment guidelines, weather data, and safety information
 - **Advisory Agent**: Converts technical data into farmer-friendly action plans
 - **Memory Agent**: Tracks farm history, schedules follow-ups, and learns patterns
 
 ### 🛠️ Capabilities
 ✅ **Image-Based Disease Detection** - Upload a photo, get instant diagnosis  
+✅ **Local ML Model Support** - Run offline with trained CNN (no API costs!)  
 ✅ **Treatment Recommendations** - Organic and chemical options  
 ✅ **Weather Integration** - Treatment timing based on local conditions  
 ✅ **Safety Guidelines** - Pesticide handling and application safety  
 ✅ **Cost Estimation** - Approximate treatment costs in INR  
 ✅ **Follow-Up Scheduling** - Automated reminders to check progress  
 ✅ **History Tracking** - Learn from past occurrences  
-✅ **Multilingual Support** - English (Hindi planned)
+✅ **Multilingual Support** - English and Hindi
+
+### 🆕 Two Inference Modes
+
+#### 1. API Mode (Default - Cloud-based)
+- Uses Gemini 2.5 Flash API for vision analysis
+- Best for: Quick deployment, always-online apps
+- Requirements: API key, internet connection
+- Cost: Pay per API call
+
+#### 2. Local ML Mode (Offline-capable)
+- Uses trained ResNet50 CNN model
+- Best for: Cost-sensitive, offline, privacy-focused
+- Requirements: PyTorch, trained model weights
+- Cost: Free after training
+- **Setup**: See [ML_MODEL_SETUP.md](ML_MODEL_SETUP.md)
 
 ---
 

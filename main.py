@@ -55,17 +55,15 @@ class KrishiSahayakCoordinator:
         self.workflow = self._build_workflow()
     
     def _init_gemini_client(self) -> OpenAIChatClient:
-        """Initialize Gemini client using OpenAI-compatible interface."""
-        # Gemini through OpenAI SDK requires specific format
-        import openai
+        """Initialize Gemini client using OpenAI-compatible interface with proper timeout settings."""
+        # Create OpenAIChatClient with timeout configuration
+        # Note: OpenAIChatClient may not support timeout directly, 
+        # so we set environment variables as fallback
+        import os
         
-        # Configure client with timeout and retry settings
-        client = openai.OpenAI(
-            api_key=Config.GEMINI_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-            timeout=60.0,  # 60 second timeout
-            max_retries=3   # Retry up to 3 times on failure
-        )
+        # Set connection timeout environment variables
+        os.environ.setdefault('OPENAI_TIMEOUT', '60')
+        os.environ.setdefault('OPENAI_MAX_RETRIES', '3')
         
         return OpenAIChatClient(
             api_key=Config.GEMINI_API_KEY,
@@ -126,24 +124,42 @@ class KrishiSahayakCoordinator:
         """
         max_retries = 3
         retry_delay = 2  # seconds
+        last_error = None
         
         for attempt in range(max_retries):
             try:
                 return await self._diagnose_with_retry(image_path, user_id, location, additional_context, language)
             except Exception as e:
+                last_error = e
                 error_msg = str(e)
-                if "Connection error" in error_msg or "timeout" in error_msg.lower():
-                    if attempt < max_retries - 1:
-                        print(f"⚠️  Connection error. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
-                        await asyncio.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-                        continue
-                    else:
-                        raise Exception(f"Failed after {max_retries} attempts. Please check your internet connection and API key.")
-                else:
-                    raise  # Re-raise non-connection errors
+                error_type = type(e).__name__
+                
+                print(f"❌ Error on attempt {attempt + 1}/{max_retries}: {error_type}: {error_msg}")
+                
+                # Check if it's a retryable error
+                is_retryable = (
+                    "Connection error" in error_msg or 
+                    "timeout" in error_msg.lower() or
+                    "connection" in error_msg.lower() or
+                    "network" in error_msg.lower() or
+                    error_type in ["ConnectionError", "TimeoutError", "HTTPException"]
+                )
+                
+                if is_retryable and attempt < max_retries - 1:
+                    print(f"⚠️  Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+                elif not is_retryable:
+                    # Non-connection error, fail immediately
+                    print(f"🚫 Non-retryable error encountered: {error_type}")
+                    raise
         
-        raise Exception("Diagnosis failed after all retry attempts")
+        # All retries exhausted
+        raise Exception(
+            f"Failed after {max_retries} attempts. Last error: {type(last_error).__name__}: {str(last_error)}. "
+            "Please check your internet connection and API key."
+        )
     
     async def _diagnose_with_retry(
         self,
@@ -166,15 +182,20 @@ class KrishiSahayakCoordinator:
         
         print("🌱 Starting AI Krishi Sahayak diagnosis...")
         print(f"📸 Analyzing image: {image_path}")
+        print(f"🌐 Language: {language}")
         
         # Run the workflow with streaming
         final_output = None
-        async for event in self.workflow.run_stream(input_data):
-            # You can handle different event types here for detailed logging
-            from agent_framework import WorkflowOutputEvent
-            if isinstance(event, WorkflowOutputEvent):
-                final_output = event.data
-                print("✅ Diagnosis complete!")
+        try:
+            async for event in self.workflow.run_stream(input_data):
+                # You can handle different event types here for detailed logging
+                from agent_framework import WorkflowOutputEvent
+                if isinstance(event, WorkflowOutputEvent):
+                    final_output = event.data
+                    print("✅ Diagnosis complete!")
+        except Exception as e:
+            print(f"❌ Workflow execution failed: {type(e).__name__}: {str(e)}")
+            raise
         
         # Save to memory
         if final_output:

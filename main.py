@@ -58,10 +58,15 @@ class KrishiSahayakCoordinator:
         """Initialize Gemini client using OpenAI-compatible interface."""
         # Gemini through OpenAI SDK requires specific format
         import openai
+        
+        # Configure client with timeout and retry settings
         client = openai.OpenAI(
             api_key=Config.GEMINI_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            timeout=60.0,  # 60 second timeout
+            max_retries=3   # Retry up to 3 times on failure
         )
+        
         return OpenAIChatClient(
             api_key=Config.GEMINI_API_KEY,
             model_id="gemini-2.5-flash",
@@ -107,8 +112,7 @@ class KrishiSahayakCoordinator:
         additional_context: str = "",
         language: str = "en"
     ) -> dict:
-        """
-        Main method to diagnose plant disease and provide action plan.
+        """Main method to diagnose plant disease and provide action plan.
         
         Args:
             image_path: Path to plant image
@@ -120,6 +124,36 @@ class KrishiSahayakCoordinator:
         Returns:
             Complete diagnosis and action plan
         """
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                return await self._diagnose_with_retry(image_path, user_id, location, additional_context, language)
+            except Exception as e:
+                error_msg = str(e)
+                if "Connection error" in error_msg or "timeout" in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  Connection error. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        raise Exception(f"Failed after {max_retries} attempts. Please check your internet connection and API key.")
+                else:
+                    raise  # Re-raise non-connection errors
+        
+        raise Exception("Diagnosis failed after all retry attempts")
+    
+    async def _diagnose_with_retry(
+        self,
+        image_path: str,
+        user_id: str,
+        location: str,
+        additional_context: str,
+        language: str
+    ) -> dict:
+        """Internal method to perform diagnosis with retry capability."""
         # Prepare input data
         input_data = {
             "image_path": image_path,

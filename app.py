@@ -194,8 +194,12 @@ def history():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    user_history = get_memory_agent().get_user_history(session['user_id'])
-    return render_template('history.html', history=user_history, user=session)
+    try:
+        user_history = get_memory_agent().get_user_history(session['user_id'])
+        return render_template('history.html', history=user_history, user=session)
+    except Exception as e:
+        app.logger.error(f"Error in history route: {str(e)}")
+        return render_template('history.html', history=[], user=session, error=str(e))
 
 @app.route('/followup')
 def followup():
@@ -203,8 +207,12 @@ def followup():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    followups = get_memory_agent().get_pending_followups(session['user_id'])
-    return render_template('followup.html', followups=followups, user=session)
+    try:
+        followups = get_memory_agent().get_pending_followups(session['user_id'])
+        return render_template('followup.html', followups=followups, user=session)
+    except Exception as e:
+        app.logger.error(f"Error in followup route: {str(e)}")
+        return render_template('followup.html', followups=[], user=session, error=str(e))
 
 @app.route('/about')
 def about():
@@ -217,11 +225,15 @@ def get_session(session_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    session_data = get_memory_agent().get_session_details(session_id)
-    if session_data:
-        return jsonify(session_data)
-    else:
-        return jsonify({'error': 'Session not found'}), 404
+    try:
+        session_data = get_memory_agent().get_session_details(session_id)
+        if session_data:
+            return jsonify(session_data)
+        else:
+            return jsonify({'error': 'Session not found'}), 404
+    except Exception as e:
+        app.logger.error(f"Error in get_session route: {str(e)}")
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

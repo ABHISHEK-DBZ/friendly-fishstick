@@ -33,7 +33,14 @@ class MemoryAgent:
             db_path: Path to SQLite database file
         """
         if db_path is None:
-            db_path = Config.DATA_DIR / "farm_memory.db"
+            # Use /tmp in serverless environments
+            import os
+            if os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+                db_path = Path("/tmp") / "farm_memory.db"
+            else:
+                # Ensure data directory exists
+                Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+                db_path = Config.DATA_DIR / "farm_memory.db"
         
         self.db_path = db_path
         self._init_database()

@@ -14,8 +14,15 @@ class Config:
     # Base paths
     BASE_DIR = Path(__file__).parent
     DATA_DIR = BASE_DIR / "data"
-    UPLOADS_DIR = BASE_DIR / "uploads"
-    LOGS_DIR = BASE_DIR / "logs"
+    
+    # Use /tmp for serverless environments (Vercel, AWS Lambda, etc.)
+    # These directories need write access
+    if os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+        UPLOADS_DIR = Path("/tmp") / "uploads"
+        LOGS_DIR = Path("/tmp") / "logs"
+    else:
+        UPLOADS_DIR = BASE_DIR / "uploads"
+        LOGS_DIR = BASE_DIR / "logs"
     
     # API Keys
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")

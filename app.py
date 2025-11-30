@@ -29,7 +29,14 @@ else:
     app.config['DEBUG'] = True
 
 # Ensure upload directory exists
-Config.UPLOADS_DIR.mkdir(exist_ok=True)
+try:
+    Config.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    # In serverless environments, we might not have write access
+    # Use /tmp directory as fallback
+    import tempfile
+    Config.UPLOADS_DIR = Path(tempfile.gettempdir()) / "uploads"
+    Config.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Initialize coordinator and memory agent lazily
 coordinator = None

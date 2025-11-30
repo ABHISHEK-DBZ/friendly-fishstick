@@ -393,9 +393,9 @@ ai agent/
 
 **Built for**: GitHub Models Agents Hackathon 2024  
 **Track**: Agents for Good  
-**Developer**: [Your Name]  
-**GitHub**: [Your GitHub Profile]  
-**LinkedIn**: [Your LinkedIn]
+**Developer**: Abhishek jha  
+**GitHub**: ABHISHEK-DBZ  
+**LinkedIn**: Abhishek-jha-cse
 
 ---
 

@@ -85,11 +85,18 @@ class Config:
     @classmethod
     def ensure_directories(cls):
         """Create necessary directories if they don't exist"""
-        for directory in [cls.DATA_DIR, cls.UPLOADS_DIR, cls.LOGS_DIR]:
-            directory.mkdir(parents=True, exist_ok=True)
-            
-        # Create subdirectories
-        (cls.DATA_DIR / "user_sessions").mkdir(exist_ok=True)
+        try:
+            for directory in [cls.DATA_DIR, cls.UPLOADS_DIR, cls.LOGS_DIR]:
+                directory.mkdir(parents=True, exist_ok=True)
+                
+            # Create subdirectories
+            (cls.DATA_DIR / "user_sessions").mkdir(exist_ok=True)
+        except (OSError, PermissionError) as e:
+            # In serverless/read-only environments, skip directory creation
+            # Directories will be created in /tmp when actually needed
+            pass
 
-# Initialize directories on import
-Config.ensure_directories()
+# Don't initialize directories on import in serverless environments
+# They will be created when actually needed
+if not (os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')):
+    Config.ensure_directories()

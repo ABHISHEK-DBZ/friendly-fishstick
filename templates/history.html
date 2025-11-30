@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}History - AI Krishi Sahayak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">
+        <i class="fas fa-history"></i> Diagnosis History
+    </h2>
+    
+    {% if history %}
+    <div class="row">
+        {% for session in history %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-leaf text-success"></i> 
+                            Session #{{ session.session_id[:8] }}
+                        </h5>
+                        <span class="badge bg-success">
+                            {{ session.session_date }}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong><i class="fas fa-bug text-danger"></i> Disease:</strong>
+                        <p class="mb-1">{{ session.diagnosis_summary or 'N/A' }}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong><i class="fas fa-map-marker-alt text-primary"></i> Location:</strong>
+                        {{ session.location or 'N/A' }}
+                    </div>
+                    
+                    {% if session.image_path %}
+                    <div class="mb-3">
+                        <img src="{{ url_for('static', filename='uploads/' + session.image_path.split('/')[-1]) }}" 
+                             alt="Plant Image" 
+                             class="img-fluid rounded"
+                             style="max-height: 200px;">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-outline-success" 
+                                onclick="viewDetails('{{ session.session_id }}')">
+                            <i class="fas fa-eye"></i> View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No diagnosis history found. 
+        <a href="{{ url_for('diagnose') }}" class="alert-link">Start your first diagnosis</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i> Session Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Loading...
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function viewDetails(sessionId) {
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    const modalBody = document.getElementById('modalBody');
+    
+    modalBody.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+    modal.show();
+    
+    try {
+        const response = await fetch(`/api/session/${sessionId}`);
+        const data = await response.json();
+        
+        let html = `
+            <div class="mb-3">
+                <h6><i class="fas fa-calendar"></i> Date</h6>
+                <p>${data.session_date}</p>
+            </div>
+            <div class="mb-3">
+                <h6><i class="fas fa-bug"></i> Diagnosis</h6>
+                <pre class="bg-light p-3 rounded">${data.diagnosis_json || 'N/A'}</pre>
+            </div>
+            <div class="mb-3">
+                <h6><i class="fas fa-tasks"></i> Action Plan</h6>
+                <pre class="bg-light p-3 rounded">${data.action_plan || 'N/A'}</pre>
+            </div>
+        `;
+        
+        modalBody.innerHTML = html;
+    } catch (error) {
+        modalBody.innerHTML = `<div class="alert alert-danger">Error loading details</div>`;
+    }
+}
+</script>
+{% endblock %}

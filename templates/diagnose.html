@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Diagnose - AI Krishi Sahayak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-camera"></i> Plant Disease Diagnosis
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <form id="diagnoseForm" enctype="multipart/form-data">
+                        <!-- Image Upload -->
+                        <div class="mb-4">
+                            <label for="imageInput" class="form-label fw-bold">
+                                <i class="fas fa-image"></i> Upload Plant Image *
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="imageInput" 
+                                   name="image" 
+                                   accept="image/*"
+                                   required>
+                            <div class="form-text">
+                                Supported formats: JPG, PNG, GIF, WebP (Max 16MB)
+                            </div>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div class="mb-4" id="imagePreviewContainer" style="display: none;">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-eye"></i> Image Preview
+                            </label>
+                            <div class="border rounded p-2 text-center">
+                                <img id="imagePreview" src="" alt="Preview" class="img-fluid rounded" style="max-height: 300px;">
+                            </div>
+                        </div>
+
+                        <!-- Location -->
+                        <div class="mb-4">
+                            <label for="locationInput" class="form-label fw-bold">
+                                <i class="fas fa-map-marker-alt"></i> Location
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="locationInput" 
+                                   name="location" 
+                                   value="{{ user.location }}"
+                                   placeholder="e.g., Mumbai, Pune">
+                            <div class="form-text">
+                                Used for weather-based recommendations
+                            </div>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="mb-4">
+                            <label for="additionalInfo" class="form-label fw-bold">
+                                <i class="fas fa-info-circle"></i> Additional Information (Optional)
+                            </label>
+                            <textarea class="form-control" 
+                                      id="additionalInfo" 
+                                      name="additional_info" 
+                                      rows="3"
+                                      placeholder="e.g., Spots appeared 3 days ago, affecting multiple plants"></textarea>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                <i class="fas fa-search"></i> Analyze Plant
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Loading Spinner -->
+                    <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Analyzing image... This may take a moment.</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="resultsContainer" style="display: none;" class="mt-4">
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">
+                                <i class="fas fa-check-circle"></i> Diagnosis Complete!
+                            </h4>
+                            <hr>
+                            <div id="resultsContent"></div>
+                        </div>
+                    </div>
+
+                    <!-- Error -->
+                    <div id="errorContainer" style="display: none;" class="mt-4">
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">
+                                <i class="fas fa-exclamation-circle"></i> Error
+                            </h4>
+                            <p id="errorMessage"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById('diagnoseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const errorContainer = document.getElementById('errorContainer');
+    
+    // Hide previous results
+    resultsContainer.style.display = 'none';
+    errorContainer.style.display = 'none';
+    
+    // Show loading
+    submitBtn.disabled = true;
+    loadingSpinner.style.display = 'block';
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('/diagnose', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Display results
+            displayResults(data.result);
+            resultsContainer.style.display = 'block';
+        } else {
+            document.getElementById('errorMessage').textContent = data.error;
+            errorContainer.style.display = 'block';
+        }
+    } catch (error) {
+        document.getElementById('errorMessage').textContent = 'An error occurred: ' + error.message;
+        errorContainer.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = 'none';
+    }
+});
+
+function displayResults(result) {
+    const content = document.getElementById('resultsContent');
+    let html = '';
+    
+    // Diagnosis
+    if (result.diagnosis_summary) {
+        html += `<div class="mb-3">
+            <h5><i class="fas fa-bug text-danger"></i> Diagnosis</h5>
+            <p>${result.diagnosis_summary}</p>
+        </div>`;
+    }
+    
+    // Weather
+    if (result.weather_data) {
+        html += `<div class="mb-3">
+            <h5><i class="fas fa-cloud-sun text-primary"></i> Weather Conditions</h5>
+            <p>${JSON.stringify(result.weather_data, null, 2)}</p>
+        </div>`;
+    }
+    
+    // Action Plan
+    if (result.action_plan) {
+        html += `<div class="mb-3">
+            <h5><i class="fas fa-tasks text-success"></i> Treatment Plan</h5>
+            <pre class="bg-light p-3 rounded">${result.action_plan}</pre>
+        </div>`;
+    }
+    
+    // View History Link
+    html += `<div class="text-center mt-4">
+        <a href="/history" class="btn btn-primary">
+            <i class="fas fa-history"></i> View Full History
+        </a>
+    </div>`;
+    
+    content.innerHTML = html;
+}
+</script>
+{% endblock %}

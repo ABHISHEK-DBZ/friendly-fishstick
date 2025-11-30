@@ -6,6 +6,15 @@ from typing import Dict, Any
 from agent_framework import Executor, WorkflowContext, handler
 from agent_framework import ChatAgent, ChatMessage
 from config import Config
+import sys
+from pathlib import Path
+
+# Add parent directory to path for translations
+parent_dir = str(Path(__file__).resolve().parent.parent)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from translations import get_advisory_instruction
 
 
 class AdvisoryAgent(Executor):
@@ -84,24 +93,15 @@ Use bullet points and numbered lists.
         research = research_data.get("research", "")
         treatment_info = research_data.get("treatment_info", {})
         weather = research_data.get("weather", {})
+        language = research_data.get("language", "en")  # Default to English
         
-        # Build advisory prompt
-        advisory_prompt = f"""Create a simple, farmer-friendly action plan based on this information:
-
-DIAGNOSIS FROM EXPERT:
-{diagnosis}
-
-RESEARCH AND RECOMMENDATIONS:
-{research}
-
-CURRENT WEATHER:
-{weather}
-
-Create a clear action plan that any farmer can follow, even with limited education.
-Include practical steps, timing, costs, and safety measures.
-Make it encouraging and supportive in tone.
-
-Remember: This advice could save their crop and livelihood!"""
+        # Build advisory prompt using translations
+        advisory_prompt = get_advisory_instruction(
+            diagnosis=diagnosis,
+            research=research,
+            weather=str(weather),
+            language=language
+        )
         
         message = ChatMessage(role="user", text=advisory_prompt)
         response = await self.agent.run([message])
@@ -115,6 +115,7 @@ Remember: This advice could save their crop and livelihood!"""
             "weather_context": weather,
             "image_path": research_data.get("image_path"),
             "generated_at": research_data.get("timestamp"),
+            "language": language,
             "follow_up_required": True,
             "follow_up_days": 2  # Check back in 2 days
         }

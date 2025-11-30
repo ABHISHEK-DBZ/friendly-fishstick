@@ -104,7 +104,8 @@ class KrishiSahayakCoordinator:
         image_path: str,
         user_id: str,
         location: str = "",
-        additional_context: str = ""
+        additional_context: str = "",
+        language: str = "en"
     ) -> dict:
         """
         Main method to diagnose plant disease and provide action plan.
@@ -114,6 +115,7 @@ class KrishiSahayakCoordinator:
             user_id: User identifier
             location: Farmer's location (for weather data)
             additional_context: Any additional info from farmer
+            language: Language for output ("en" or "hi")
             
         Returns:
             Complete diagnosis and action plan
@@ -124,6 +126,7 @@ class KrishiSahayakCoordinator:
             "user_id": user_id,
             "location": location,
             "additional_context": additional_context,
+            "language": language,
             "timestamp": datetime.now().isoformat()
         }
         

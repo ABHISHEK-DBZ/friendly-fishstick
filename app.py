@@ -14,6 +14,7 @@ import secrets
 from main import KrishiSahayakCoordinator
 from agents.memory_agent import MemoryAgent
 from config import Config
+from translations import get_text
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
@@ -47,6 +48,12 @@ def get_coordinator():
     if coordinator is None:
         coordinator = KrishiSahayakCoordinator()
     return coordinator
+
+@app.context_processor
+def inject_language():
+    """Make language and translation function available in all templates"""
+    lang = session.get('language', 'en')
+    return dict(lang=lang, get_text=lambda key: get_text(key, lang))
 
 def get_memory_agent():
     global memory_agent
@@ -123,6 +130,13 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    """Set user language preference"""
+    if lang in ['en', 'hi']:
+        session['language'] = lang
+    return redirect(request.referrer or url_for('index'))
+
 @app.route('/diagnose', methods=['GET', 'POST'])
 def diagnose():
     """Plant disease diagnosis"""
@@ -146,6 +160,7 @@ def diagnose():
             
             location = request.form.get('location', session.get('location', ''))
             additional_info = request.form.get('additional_info', '')
+            language = session.get('language', 'en')  # Get user's language preference
             
             try:
                 # Run diagnosis asynchronously
@@ -156,7 +171,8 @@ def diagnose():
                         image_path=filepath,
                         user_id=session['user_id'],
                         location=location,
-                        additional_context=additional_info
+                        additional_context=additional_info,
+                        language=language
                     )
                 )
                 loop.close()
